@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StudyMate Admin</title>
+<style>body{font:16px system-ui,sans-serif;max-width:560px;margin:0 auto;padding:16px;background:#EEF3FC;color:#12203a}input,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #c5d0e6;margin:4px 0}button{background:#1D5BE0;color:#fff;border:0;font-weight:600;cursor:pointer}.c{background:#fff;border-radius:12px;padding:12px;margin:10px 0}.r{background:#C0262D}.g{display:inline-block;padding:10px 14px;border-radius:8px;background:#0B8F4D;color:#fff;text-decoration:none;font-weight:600;margin-top:6px}small{color:#51607d}</style></head><body>
+<h2>StudyMate AI: payment approvals</h2><input id="k" type="password" placeholder="Admin key"> <button id="go">Load requests</button>
+<p><small>Before approving, open your Kotak/UPI app and confirm the UTR and the amount really arrived.</small></p><div id="list"></div>
+<script>
+var API='https://studymate-ai.avyuteck.workers.dev';
+function call(p,b){return fetch(API+p,{method:'POST',headers:{'content-type':'application/json','x-admin-key':document.getElementById('k').value},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Error');return j})})}
+function el(t,x,c){var e=document.createElement(t);if(x)e.textContent=x;if(c)e.className=c;return e}
+function load(){var L=document.getElementById('list');L.textContent='Loading…';call('/admin/list').then(function(d){L.textContent='';if(!d.items.length)L.textContent='No pending requests.';
+ d.items.sort(function(a,b){return a.ts-b.ts}).forEach(function(r){var c=el('div','', 'c');c.append(el('b',r.name+'  (+91 '+r.phone+')'),el('br'),el('span',r.plan+' plan, ₹'+r.amount+', UTR '+r.utr+', Ref SM-'+r.id.split('-')[1].toUpperCase()),el('br'),el('small',new Date(r.ts).toLocaleString('en-IN')),el('br'));
+  var ok=el('button','Approve and create login'),no=el('button','Reject','r');no.style.marginLeft='8px';
+  ok.onclick=function(){ok.disabled=true;call('/admin/approve',{id:r.id}).then(function(j){c.textContent='';c.append(el('b','Approved: '+r.name),el('br'),el('span','Username: '+j.username+'   Password: '+j.password),el('br'));var a=el('a','Send on WhatsApp','g');a.href=j.wa;a.target='_blank';c.append(a)}).catch(function(e){alert(e.message);ok.disabled=false})};
+  no.onclick=function(){if(confirm('Reject this request?'))call('/admin/reject',{id:r.id}).then(load)};c.append(ok,no);L.append(c)})}).catch(function(e){L.textContent=e.message})}
+document.getElementById('go').onclick=load;
+</script></body></html>
