@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StudyMate Admin</title>
+<style>body{font:16px system-ui,sans-serif;max-width:640px;margin:0 auto;padding:16px;background:#EEF3FC;color:#12203a}input,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #c5d0e6;margin:4px 0}button{background:#1D5BE0;color:#fff;border:0;font-weight:600;cursor:pointer}.c{background:#fff;border-radius:12px;padding:12px;margin:10px 0}.r{background:#C0262D}.g{display:inline-block;padding:10px 14px;border-radius:8px;background:#0B8F4D;color:#fff;text-decoration:none;font-weight:600;margin:6px 6px 0 0}small{color:#51607d}h3{margin:22px 0 4px}.b{display:inline-block;padding:2px 10px;border-radius:99px;font-size:13px;font-weight:700;margin-left:6px}.ok{background:#DDF5E8;color:#0B7A41}.no{background:#FDE3E4;color:#C0262D}</style></head><body>
+<h2>StudyMate AI admin</h2><input id="k" type="password" placeholder="Admin key"> <button id="go">Load</button>
+<p><small>Before approving, open your Kotak/UPI app and confirm the UTR and the amount really arrived.</small></p>
+<h3>Pending payments</h3><div id="list"></div><h3>Members</h3><div id="users"></div>
+<script>
+var API='https://studymate-ai.avyuteck.workers.dev';
+function call(p,b){return fetch(API+p,{method:'POST',headers:{'content-type':'application/json','x-admin-key':document.getElementById('k').value},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Error');return j})})}
+function el(t,x,c){var e=document.createElement(t);if(x)e.textContent=x;if(c)e.className=c;return e}
+function fd(t){return t?new Date(t).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'-'}
+function pending(){var L=document.getElementById('list');call('/admin/list').then(function(d){L.textContent='';if(!d.items.length)L.textContent='No pending requests.';
+ d.items.sort(function(a,b){return a.ts-b.ts}).forEach(function(r){var c=el('div','','c');c.append(el('b',r.name+'  (+91 '+r.phone+')'),el('br'),el('span',r.plan+' plan, ₹'+r.amount+', UTR '+r.utr+', Ref SM-'+r.id.split('-')[1].toUpperCase()),el('br'),el('small',new Date(r.ts).toLocaleString('en-IN')),el('br'));
+  var ok=el('button','Approve and create login'),no=el('button','Reject','r');no.style.marginLeft='8px';
+  ok.onclick=function(){ok.disabled=true;call('/admin/approve',{id:r.id}).then(function(j){c.textContent='';c.append(el('b','Approved: '+r.name),el('br'),el('span','Username: '+j.username+'   Password: '+j.password),el('br'));var a=el('a','Send on WhatsApp','g');a.href=j.wa;a.target='_blank';c.append(a);members()}).catch(function(e){alert(e.message);ok.disabled=false})};
+  no.onclick=function(){if(confirm('Reject this request?'))call('/admin/reject',{id:r.id}).then(pending)};c.append(ok,no);L.append(c)})}).catch(function(e){L.textContent=e.message})}
+function members(){var U=document.getElementById('users');call('/admin/users').then(function(d){U.textContent='';if(!d.items.length)U.textContent='No members yet.';
+ d.items.sort(function(a,b){return (b.active-a.active)||(b.exp-a.exp)}).forEach(function(u){var left=Math.ceil((u.exp-Date.now())/864e5),c=el('div','','c'),h=el('b',u.name);h.append(el('span',u.active?'Active':'Expired','b '+(u.active?'ok':'no')));
+  c.append(h,el('br'),el('span','+91 '+u.phone+'  ·  '+u.plan+' plan  ·  username '+u.username),el('br'),el('small',u.active?('Valid until '+fd(u.exp)+' ('+left+' day'+(left===1?'':'s')+' left)'):('Expired on '+fd(u.exp))+(u.at?'  ·  Joined '+fd(u.at):'')),el('br'));
+  var wa=el('a','Chat on WhatsApp','g');wa.href='https://wa.me/91'+u.phone;wa.target='_blank';var rm=el('button','Remove access','r');
+  rm.onclick=function(){if(confirm('Remove access for '+u.name+'? They will not be able to log in.'))call('/admin/revoke',{username:u.username}).then(members)};c.append(wa,rm);U.append(c)})}).catch(function(e){U.textContent=e.message})}
+document.getElementById('go').onclick=function(){pending();members()};
+</script></body></html>
