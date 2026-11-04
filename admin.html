@@ -5,15 +5,16 @@
 <h3>Pending payments</h3><div id="list"></div><h3>Members</h3><div id="users"></div>
 <script>
 var API='https://studymate-ai.avyuteck.workers.dev';
-function call(p,b){return fetch(API+p,{method:'POST',headers:{'content-type':'application/json','x-admin-key':document.getElementById('k').value},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Error');return j})})}
+var known={};
+function call(p,b){return fetch(API+p,{method:'POST',headers:{'content-type':'application/json','x-admin-key':document.getElementById('k').value},body:JSON.stringify(b||{})}).then(function(r){return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(!r.ok)throw new Error(j.error||(r.status===404?'The Worker is outdated. Paste the latest worker.js in Cloudflare and deploy.':'Error '+r.status));return j})})}
 function el(t,x,c){var e=document.createElement(t);if(x)e.textContent=x;if(c)e.className=c;return e}
 function fd(t){return t?new Date(t).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'-'}
 function pending(){var L=document.getElementById('list');call('/admin/list').then(function(d){L.textContent='';if(!d.items.length)L.textContent='No pending requests.';
  d.items.sort(function(a,b){return a.ts-b.ts}).forEach(function(r){var c=el('div','','c');c.append(el('b',r.name+'  (+91 '+r.phone+')'),el('br'),el('span',r.plan+' plan, ₹'+r.amount+', UTR '+r.utr+', Ref SM-'+r.id.split('-')[1].toUpperCase()),el('br'),el('small',new Date(r.ts).toLocaleString('en-IN')),el('br'));
   var ok=el('button','Approve and create login'),no=el('button','Reject','r');no.style.marginLeft='8px';
-  ok.onclick=function(){ok.disabled=true;call('/admin/approve',{id:r.id}).then(function(j){c.textContent='';c.append(el('b','Approved: '+r.name),el('br'),el('span','Username: '+j.username+'   Password: '+j.password),el('br'));var a=el('a','Send on WhatsApp','g');a.href=j.wa;a.target='_blank';c.append(a);members()}).catch(function(e){alert(e.message);ok.disabled=false})};
+  ok.onclick=function(){ok.disabled=true;call('/admin/approve',{id:r.id}).then(function(j){c.textContent='';c.append(el('b','Approved: '+r.name),el('br'),el('span','Username: '+j.username+'   Password: '+j.password),el('br'));var a=el('a','Send on WhatsApp','g');a.href=j.wa;a.target='_blank';c.append(a);known[j.username]=j.member;members()}).catch(function(e){alert(e.message);ok.disabled=false})};
   no.onclick=function(){if(confirm('Reject this request?'))call('/admin/reject',{id:r.id}).then(pending)};c.append(ok,no);L.append(c)})}).catch(function(e){L.textContent=e.message})}
-function members(){var U=document.getElementById('users');call('/admin/users').then(function(d){U.textContent='';if(!d.items.length)U.textContent='No members yet.';
+function members(){var U=document.getElementById('users');call('/admin/users').then(function(d){var seen={};d.items.forEach(function(u){seen[u.username]=1});Object.keys(known).forEach(function(k){if(!seen[k])d.items.push(known[k])});U.textContent='';if(!d.items.length)U.textContent='No members yet.';
  d.items.sort(function(a,b){return (b.active-a.active)||(b.exp-a.exp)}).forEach(function(u){var left=Math.ceil((u.exp-Date.now())/864e5),c=el('div','','c'),h=el('b',u.name);h.append(el('span',u.active?'Active':'Expired','b '+(u.active?'ok':'no')));
   c.append(h,el('br'),el('span','+91 '+u.phone+'  ·  '+u.plan+' plan  ·  username '+u.username),el('br'),el('small',u.active?('Valid until '+fd(u.exp)+' ('+left+' day'+(left===1?'':'s')+' left)'):('Expired on '+fd(u.exp))+(u.at?'  ·  Joined '+fd(u.at):'')),el('br'));
   var wa=el('a','Chat on WhatsApp','g');wa.href='https://wa.me/91'+u.phone;wa.target='_blank';var rm=el('button','Remove access','r');
